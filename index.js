@@ -61,10 +61,50 @@ async function run() {
 
         });
 
-        app.get('/bookings', async(req,res)=>{
-            const result= await bookingCollection.find().toArray()
+        app.get('/bookings', async (req, res) => {
+            const result = await bookingCollection.find().toArray()
             res.send(result)
         })
+
+        // Get bookings filtered by user email
+        app.get('/my-bookings/:email', async (req, res) => {
+            try {
+                const { email } = req.params;
+
+                if (!email) {
+                    return res.status(400).send({ error: 'Email is required' });
+                }
+
+                const result = await bookingCollection.find({ userEmail: email }).toArray();
+                res.send(result);
+            } catch (error) {
+                console.error('Error fetching user bookings:', error);
+                res.status(500).send({ error: 'Failed to fetch bookings' });
+            }
+        });
+
+        // Cancel booking
+        app.delete('/bookings/:id', async (req, res) => {
+            try {
+                const { id } = req.params;
+
+                if (!ObjectId.isValid(id)) {
+                    return res.status(400).send({ error: 'Invalid booking ID' });
+                }
+
+                const objectId = new ObjectId(id);
+                const result = await bookingCollection.deleteOne({ _id: objectId });
+
+                if (result.deletedCount === 0) {
+                    return res.status(404).send({ error: 'Booking not found' });
+                }
+
+                res.send({ success: true, message: 'Booking cancelled successfully' });
+            } catch (error) {
+                console.error('Error cancelling booking:', error);
+                res.status(500).send({ error: 'Failed to cancel booking' });
+            }
+        });
 
 
 
