@@ -182,6 +182,37 @@ async function run() {
             }
         });
 
+        // Update vehicle
+        // Get
+        app.get(`/updateVehicle/:id`, async (req, res) => {
+            const { id } = req.params
+            const objectId = new ObjectId(id)
+            const result = await carCollection.findOne({ _id: objectId })
+            res.send(result)
+        })
+
+        // Put
+        app.put('/cars/:id', async (req, res) => {
+            const { id } = req.params
+            const data = req.body
+            console.log(id, data)
+
+            const objectId = new ObjectId(id)
+            const filter = { _id: objectId }
+            const update = {
+                $set: data
+            }
+
+            const result = await carCollection.updateOne(filter, update)
+
+            res.send({
+                success: true,
+                result
+            })
+        })
+
+
+
 
 
         // Send a ping to confirm a successful connection
