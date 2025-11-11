@@ -83,6 +83,49 @@ async function run() {
             }
         });
 
+        // My vehicle filter by email
+        app.get('/my-vehicle/:email', async (req, res) => {
+            try {
+                const { email } = req.params;
+
+                if (!email) {
+                    return res.status(400).send({ error: 'Email is required' });
+                }
+
+                const result = await carCollection.find({ userEmail: email }).toArray();
+                res.send(result);
+            } catch (error) {
+                console.error('Error fetching user vehicles:', error);
+                res.status(500).send({ error: 'Failed to fetch vehicles' });
+            }
+        });
+
+        // Delete vehicle 
+        app.delete('/cars/:id', async (req, res) => {
+            try {
+                const { id } = req.params;
+
+                if (!ObjectId.isValid(id)) {
+                    return res.status(400).send({ error: 'Invalid vehicle ID' });
+                }
+
+                const objectId = new ObjectId(id);
+                const result = await carCollection.deleteOne({ _id: objectId });
+
+                if (result.deletedCount === 0) {
+                    return res.status(404).send({ error: 'Vehicle not found' });
+                }
+
+                res.send({
+                    success: true,
+                    message: 'Vehicle deleted successfully'
+                });
+            } catch (error) {
+                console.error('Error deleting vehicle:', error);
+                res.status(500).send({ error: 'Failed to delete vehicle' });
+            }
+        });
+
         // Cancel booking
         app.delete('/bookings/:id', async (req, res) => {
             try {
@@ -103,6 +146,39 @@ async function run() {
             } catch (error) {
                 console.error('Error cancelling booking:', error);
                 res.status(500).send({ error: 'Failed to cancel booking' });
+            }
+        });
+
+        // Add vehicle
+        app.post('/cars', async (req, res) => {
+            try {
+                const vehicleData = req.body;
+
+                // Validate required fields
+                const requiredFields = ['vehicleName', 'owner', 'category', 'pricePerDay', 'location', 'description', 'userEmail'];
+                for (const field of requiredFields) {
+                    if (!vehicleData[field]) {
+                        return res.status(400).send({ error: `Missing required field: ${field}` });
+                    }
+                }
+
+                const result = await carCollection.insertOne({
+                    ...vehicleData,
+                    createdAt: new Date().toISOString(),
+                    availability: vehicleData.availability || 'Available'
+                });
+
+                res.send({
+                    success: true,
+                    insertedId: result.insertedId,
+                    message: 'Vehicle added successfully'
+                });
+            } catch (error) {
+                console.error('Error adding vehicle:', error);
+                res.status(500).send({
+                    success: false,
+                    error: 'Failed to add vehicle'
+                });
             }
         });
 
