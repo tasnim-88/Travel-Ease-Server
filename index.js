@@ -1,7 +1,7 @@
 const express = require('express')
 const cors = require('cors')
 require('dotenv').config()
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express()
 const port = process.env.PORT || 3000
 
@@ -27,6 +27,7 @@ async function run() {
         // -----------------------------
         const db = client.db('travel_ease')
         const carCollection = db.collection('cars')
+        const bookingCollection = db.collection('bookings')
 
         // Get data
         app.get('/cars', async (req, res) => {
@@ -37,7 +38,31 @@ async function run() {
         // Latest Vehicle get
         app.get('/latestVehicle', async (req, res) => {
             const result = await carCollection.find().sort({ createdAt: 'desc' }).limit(6).toArray()
-            
+
+            res.send(result)
+        })
+
+        // Particuler car get
+        app.get('/viewDetails/:id', async (req, res) => {
+            const { id } = req.params
+            const objectId = new ObjectId(id)
+            const result = await carCollection.findOne({ _id: objectId })
+            res.send(result)
+        })
+
+        // Car booking
+        app.post('/bookings', async (req, res) => {
+            const bookingData = req.body;
+            const result = await bookingCollection.insertOne({
+                ...bookingData,
+                createdAt: new Date().toISOString()
+            });
+            res.send(result);
+
+        });
+
+        app.get('/bookings', async(req,res)=>{
+            const result= await bookingCollection.find().toArray()
             res.send(result)
         })
 
