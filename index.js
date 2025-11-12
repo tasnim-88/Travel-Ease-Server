@@ -5,6 +5,15 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express()
 const port = process.env.PORT || 3000
 
+const admin = require("firebase-admin");
+
+const serviceAccount = require("./travel-ease-d61e9-firebase-adminsdk-fbsvc-6eb5a25a25.json");
+
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+});
+
+
 // Middleware
 app.use(cors())
 app.use(express.json())
@@ -18,6 +27,29 @@ const client = new MongoClient(uri, {
         deprecationErrors: true,
     }
 });
+
+// Middleware
+const verifyFirebaseToken = async (req, res, next) => {
+    const authorization = req.headers.authorization
+    if (!authorization) {
+        return res.status(401).send({ message: 'Unauthorized access!' })
+    }
+    const token = authorization.split(' ')[1]
+    if (!token) {
+        return res.status(401).send({ message: 'Unauthorized access!' })
+    }
+
+    // Verify token
+    try {
+        const decoded = await admin.auth().verifyIdToken(token)
+        req.token_email= decoded.email
+        next()
+    }
+    catch {
+        return res.status(401).send({message: 'Unauthorized access!'})
+    }
+
+}
 
 async function run() {
     try {
@@ -43,7 +75,7 @@ async function run() {
         })
 
         // Particuler car get
-        app.get('/viewDetails/:id', async (req, res) => {
+        app.get('/viewDetails/:id', verifyFirebaseToken, async (req, res) => {
             const { id } = req.params
             const objectId = new ObjectId(id)
             const result = await carCollection.findOne({ _id: objectId })
@@ -51,19 +83,19 @@ async function run() {
         })
 
         // Car booking
-        app.post('/bookings', async (req, res) => {
+        app.post('/bookings',verifyFirebaseToken, async (req, res) => {
             const bookingData = req.body;
 
-            const existingBooking= await bookingCollection.findOne({
+            const existingBooking = await bookingCollection.findOne({
                 carId: bookingData.carId,
                 userEmail: bookingData.userEmail,
-                status: { $in: ['pending', 'confirmed']}
+                status: { $in: ['pending', 'confirmed'] }
             })
 
-            if(existingBooking){
+            if (existingBooking) {
                 return res.status(400).send({
                     success: false,
-                    message:'You already booked this car.'
+                    message: 'You already booked this car.'
                 })
             }
 
@@ -75,13 +107,13 @@ async function run() {
 
         });
 
-        app.get('/bookings', async (req, res) => {
+        app.get('/bookings',verifyFirebaseToken, async (req, res) => {
             const result = await bookingCollection.find().toArray()
             res.send(result)
         })
 
         // Get bookings filtered by user email
-        app.get('/my-bookings/:email', async (req, res) => {
+        app.get('/my-bookings/:email',verifyFirebaseToken, async (req, res) => {
             try {
                 const { email } = req.params;
 
@@ -98,7 +130,7 @@ async function run() {
         });
 
         // My vehicle filter by email
-        app.get('/my-vehicle/:email', async (req, res) => {
+        app.get('/my-vehicle/:email',verifyFirebaseToken, async (req, res) => {
             try {
                 const { email } = req.params;
 
@@ -115,7 +147,7 @@ async function run() {
         });
 
         // Delete vehicle 
-        app.delete('/cars/:id', async (req, res) => {
+        app.delete('/cars/:id',verifyFirebaseToken, async (req, res) => {
             try {
                 const { id } = req.params;
 
@@ -141,7 +173,7 @@ async function run() {
         });
 
         // Cancel booking
-        app.delete('/bookings/:id', async (req, res) => {
+        app.delete('/bookings/:id',verifyFirebaseToken, async (req, res) => {
             try {
                 const { id } = req.params;
 
@@ -164,7 +196,7 @@ async function run() {
         });
 
         // Add vehicle
-        app.post('/cars', async (req, res) => {
+        app.post('/cars',verifyFirebaseToken, async (req, res) => {
             try {
                 const vehicleData = req.body;
 
@@ -198,7 +230,7 @@ async function run() {
 
         // Update vehicle
         // Get
-        app.get(`/updateVehicle/:id`, async (req, res) => {
+        app.get(`/updateVehicle/:id`,verifyFirebaseToken, async (req, res) => {
             const { id } = req.params
             const objectId = new ObjectId(id)
             const result = await carCollection.findOne({ _id: objectId })
@@ -206,7 +238,7 @@ async function run() {
         })
 
         // Put
-        app.put('/cars/:id', async (req, res) => {
+        app.put('/cars/:id',verifyFirebaseToken, async (req, res) => {
             const { id } = req.params
             const data = req.body
             console.log(id, data)
