@@ -53,6 +53,20 @@ async function run() {
         // Car booking
         app.post('/bookings', async (req, res) => {
             const bookingData = req.body;
+
+            const existingBooking= await bookingCollection.findOne({
+                carId: bookingData.carId,
+                userEmail: bookingData.userEmail,
+                status: { $in: ['pending', 'confirmed']}
+            })
+
+            if(existingBooking){
+                return res.status(400).send({
+                    success: false,
+                    message:'You already booked this car.'
+                })
+            }
+
             const result = await bookingCollection.insertOne({
                 ...bookingData,
                 createdAt: new Date().toISOString()
