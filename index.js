@@ -45,14 +45,47 @@ const verifyFirebaseToken = async (req, res, next) => {
     // Verify token
     try {
         const decoded = await admin.auth().verifyIdToken(token)
-        req.token_email= decoded.email
+        req.token_email = decoded.email
         next()
     }
     catch {
-        return res.status(401).send({message: 'Unauthorized access!'})
+        return res.status(401).send({ message: 'Unauthorized access!' })
     }
 
 }
+
+const verifyOwner = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const userEmail = req.token_email;
+
+        if (!ObjectId.isValid(id)) {
+            return res.status(400).send({ error: 'Invalid ID' });
+        }
+
+        const objectId = new ObjectId(id);
+
+
+        const resource = await carCollection.findOne({ _id: objectId });
+
+        if (!resource) {
+            return res.status(404).send({ error: 'Resource not found' });
+        }
+
+        if (resource.userEmail !== userEmail) {
+            return res.status(403).send({
+                success: false,
+                message: 'Forbidden: You can only modify your own resources'
+            });
+        }
+
+        next();
+    } catch (error) {
+        console.error('Authorization error:', error);
+        return res.status(500).send({ error: 'Authorization failed' });
+    }
+};
+
 
 async function run() {
     try {
@@ -86,7 +119,7 @@ async function run() {
         })
 
         // Car booking
-        app.post('/bookings',verifyFirebaseToken, async (req, res) => {
+        app.post('/bookings', verifyFirebaseToken, async (req, res) => {
             const bookingData = req.body;
 
             const existingBooking = await bookingCollection.findOne({
@@ -110,18 +143,23 @@ async function run() {
 
         });
 
-        app.get('/bookings',verifyFirebaseToken, async (req, res) => {
+        app.get('/bookings', verifyFirebaseToken, async (req, res) => {
             const result = await bookingCollection.find().toArray()
             res.send(result)
         })
 
         // Get bookings filtered by user email
-        app.get('/my-bookings/:email',verifyFirebaseToken, async (req, res) => {
+        app.get('/my-bookings/:email', verifyFirebaseToken, async (req, res) => {
             try {
                 const { email } = req.params;
+                const tokenEmail = req.token_email
 
                 if (!email) {
                     return res.status(400).send({ error: 'Email is required' });
+                }
+
+                if (email !== tokenEmail) {
+                    return res.status(403).send({ message: 'Forbidden access!' })
                 }
 
                 const result = await bookingCollection.find({ userEmail: email }).toArray();
@@ -133,12 +171,17 @@ async function run() {
         });
 
         // My vehicle filter by email
-        app.get('/my-vehicle/:email',verifyFirebaseToken, async (req, res) => {
+        app.get('/my-vehicle/:email', verifyFirebaseToken, async (req, res) => {
             try {
                 const { email } = req.params;
+                const tokenEmail = req.token_email
 
                 if (!email) {
                     return res.status(400).send({ error: 'Email is required' });
+                }
+
+                if (email !== tokenEmail) {
+                    return res.status(403).send({ message: 'Forbidden access!' })
                 }
 
                 const result = await carCollection.find({ userEmail: email }).toArray();
@@ -150,7 +193,7 @@ async function run() {
         });
 
         // Delete vehicle 
-        app.delete('/cars/:id',verifyFirebaseToken, async (req, res) => {
+        app.delete('/cars/:id', verifyFirebaseToken, async (req, res) => {
             try {
                 const { id } = req.params;
 
@@ -176,9 +219,10 @@ async function run() {
         });
 
         // Cancel booking
-        app.delete('/bookings/:id',verifyFirebaseToken, async (req, res) => {
+        app.delete('/bookings/:id', verifyFirebaseToken, async (req, res) => {
             try {
                 const { id } = req.params;
+                const userEmail = req.token_email;
 
                 if (!ObjectId.isValid(id)) {
                     return res.status(400).send({ error: 'Invalid booking ID' });
@@ -187,8 +231,15 @@ async function run() {
                 const objectId = new ObjectId(id);
                 const result = await bookingCollection.deleteOne({ _id: objectId });
 
+
                 if (result.deletedCount === 0) {
                     return res.status(404).send({ error: 'Booking not found' });
+                }
+
+                if (result.userEmail !== userEmail) {
+                    return res.status(403).send({
+                        message: 'Forbidden: You can only cancel your own bookings'
+                    });
                 }
 
                 res.send({ success: true, message: 'Booking cancelled successfully' });
@@ -199,9 +250,14 @@ async function run() {
         });
 
         // Add vehicle
-        app.post('/cars',verifyFirebaseToken, async (req, res) => {
+        app.post('/cars', verifyFirebaseToken, async (req, res) => {
             try {
                 const vehicleData = req.body;
+                const tokenEmail = req.token_email
+
+                if (vehicleData.userEmail !== tokenEmail) {
+                    return res.status(403).send({ message: "Forbidden access!" })
+                }
 
                 // Validate required fields
                 const requiredFields = ['vehicleName', 'owner', 'category', 'pricePerDay', 'location', 'description', 'userEmail'];
@@ -233,7 +289,7 @@ async function run() {
 
         // Update vehicle
         // Get
-        app.get(`/updateVehicle/:id`,verifyFirebaseToken, async (req, res) => {
+        app.get(`/updateVehicle/:id`, verifyFirebaseToken, async (req, res) => {
             const { id } = req.params
             const objectId = new ObjectId(id)
             const result = await carCollection.findOne({ _id: objectId })
@@ -241,10 +297,9 @@ async function run() {
         })
 
         // Put
-        app.put('/cars/:id',verifyFirebaseToken, async (req, res) => {
+        app.put('/cars/:id', verifyFirebaseToken, verifyOwner, async (req, res) => {
             const { id } = req.params
             const data = req.body
-            console.log(id, data)
 
             const objectId = new ObjectId(id)
             const filter = { _id: objectId }
