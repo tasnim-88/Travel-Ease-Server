@@ -5,9 +5,12 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express()
 const port = process.env.PORT || 3000
 
+const decoded = Buffer.from(process.env.FIREBASE_SERVICE_KEY, "base64").toString("utf8");
+const serviceAccount = JSON.parse(decoded);
+
 const admin = require("firebase-admin");
 
-const serviceAccount = require("./travel-ease-d61e9-firebase-adminsdk-fbsvc-6eb5a25a25.json");
+// const serviceAccount = require("./travel-ease-d61e9-firebase-adminsdk-fbsvc-6eb5a25a25.json");
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
@@ -54,7 +57,7 @@ const verifyFirebaseToken = async (req, res, next) => {
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
-        await client.connect();
+        // await client.connect();
 
         // -----------------------------
         const db = client.db('travel_ease')
@@ -262,7 +265,7 @@ async function run() {
 
 
         // Send a ping to confirm a successful connection
-        await client.db("admin").command({ ping: 1 });
+        // await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
 
 
