@@ -61,3 +61,61 @@ This server uses:
 
 ---
 
+## ⚙️ Environment Variables
+
+Create a `.env` file in the root directory:
+
+```env
+PORT=5000
+DB_USER=yourMongoUser
+DB_PASS=yourMongoPassword
+
+# Base64-encoded Firebase private key
+FIREBASE_SERVICE_KEY=your_base64_encoded_service_key
+
+```
+
+## Installation
+
+1️⃣ Clone the repository
+```
+git clone https://github.com/yourusername/travelease-server.git
+cd travelease-server
+```
+2️⃣ Install all dependencies
+```
+npm install
+```
+3️⃣ Create a .env file
+
+Add all required environment variables:
+
+```
+PORT=5000
+DB_USER=yourMongoUser
+DB_PASS=yourMongoPassword
+FIREBASE_SERVICE_KEY=your_base64_encoded_service_key
+```
+
+4️⃣ Start the local development server
+```
+npm start
+```
+
+If you're using nodemon:
+```
+npm run dev
+```
+
+5️⃣ Verify the server is running
+
+Open your browser and navigate to:
+```
+http://localhost:5000/
+```
+
+You should see:
+```
+Server is running
+```
+
